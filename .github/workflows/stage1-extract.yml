@@ -1,0 +1,200 @@
+name: Stage 1 - Extract readable source from the 1.20.1 jar
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download the jar, decompiler and mappings
+        run: |
+          set -e
+          mkdir -p work && cd work
+          # The mod jar you uploaded as a release asset on this repo (tag v1)
+          curl -fL -o mod.jar "https://github.com/${{ github.repository }}/releases/download/v1/ConquestReforged-forge-1.20.1-1.7.0.jar"
+          curl -fL -o vineflower.jar https://github.com/Vineflower/vineflower/releases/download/1.11.1/vineflower-1.11.1.jar
+
+          # Official Mojang mappings for 1.20.1
+          curl -fL -o manifest.json https://piston-meta.mojang.com/mc/game/version_manifest_v2.json
+          VURL=$(python3 -c "import json;print([v['url'] for v in json.load(open('manifest.json'))['versions'] if v['id']=='1.20.1'][0])")
+          curl -fL -o v.json "$VURL"
+          python3 -c "import json;d=json.load(open('v.json'))['downloads'];open('c.url','w').write(d['client_mappings']['url']);open('s.url','w').write(d['server_mappings']['url'])"
+          curl -fL -o client.txt "$(cat c.url)"
+          curl -fL -o server.txt "$(cat s.url)"
+
+          # Forge's SRG mapping (MCPConfig). Try known versions.
+          OK=0
+          for V in 1.20.1-20230612.114412 1.20.1; do
+            if curl -fL -o mcp.zip "https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/$V/mcp_config-$V.zip"; then OK=1; break; fi
+          done
+          if [ "$OK" = 0 ]; then echo "could not download mcp_config"; exit 1; fi
+          unzip -o -q mcp.zip 'config/joined.tsrg' -d mcp
+          ls -la mcp/config
+
+      - name: Decompile
+        run: |
+          set -e
+          cd work
+          mkdir -p classes src
+          unzip -q -o mod.jar 'com/*' '*.json' 'META-INF/mods.toml' '*.accesswidener' -d classes || true
+          java -jar vineflower.jar -dgs=1 classes/com src > decompile.log 2>&1 || (tail -50 decompile.log; exit 1)
+          find src -name '*.java' | wc -l
+
+      - name: Translate obfuscated names to readable Mojang names
+        run: |
+          set -e
+          cd work
+          cat > remap.py <<'PYEOF'
+          #!/usr/bin/env python3
+          """Build srg-id -> Mojang-name table and apply it to decompiled sources.
+
+          usage: srg2moj.py <joined.tsrg> <client.txt> <server.txt> <src_dir> <out_table.json>
+          """
+          import json, re, sys, os, collections
+
+          PRIM = {'int': 'I', 'long': 'J', 'short': 'S', 'byte': 'B', 'char': 'C',
+                  'float': 'F', 'double': 'D', 'boolean': 'Z', 'void': 'V'}
+
+
+          def to_desc(t, cmap):
+              dims = 0
+              while t.endswith('[]'):
+                  dims += 1
+                  t = t[:-2]
+              if t in PRIM:
+                  d = PRIM[t]
+              else:
+                  d = 'L' + cmap.get(t, t).replace('.', '/') + ';'
+              return '[' * dims + d
+
+
+          def parse_mojmap(path):
+              cmap = {}          # named(dotted) -> obf(dotted)
+              raw = []           # (named_class, kind, name, ret, args, obf)
+              cur = None
+              for line in open(path, encoding='utf-8'):
+                  line = line.rstrip('\n')
+                  if not line.strip() or line.startswith('#'):
+                      continue
+                  if not line.startswith(' '):
+                      m = re.match(r'^(\S+) -> (\S+):$', line)
+                      if not m:
+                          continue
+                      cur = m.group(1)
+                      cmap[cur] = m.group(2)
+                      continue
+                  s = line.strip()
+                  m = re.match(r'^(?:\d+:\d+:)?(\S+) ([^\s(]+)\((.*?)\)(?::\d+:\d+)? -> (\S+)$', s)
+                  if m:
+                      ret, name, args, obf = m.groups()
+                      raw.append((cur, 'm', name, ret, [a for a in args.split(',') if a], obf))
+                      continue
+                  m = re.match(r'^(\S+) (\S+) -> (\S+)$', s)
+                  if m:
+                      t, name, obf = m.groups()
+                      raw.append((cur, 'f', name, t, [], obf))
+              return cmap, raw
+
+
+          def parse_tsrg(path):
+              fields, methods = {}, {}
+              cur = None
+              for line in open(path, encoding='utf-8'):
+                  line = line.rstrip('\n')
+                  if not line or line.startswith('tsrg2'):
+                      continue
+                  if line.startswith('\t\t'):
+                      continue
+                  if not line.startswith('\t'):
+                      cur = line.split()[0]
+                      continue
+                  t = line.strip().split()
+                  if len(t) >= 3 and t[1].startswith('('):
+                      methods[(cur, t[0], t[1])] = t[2]
+                  elif len(t) >= 2:
+                      fields[(cur, t[0])] = t[-1]
+              return fields, methods
+
+
+          def main(tsrg, client, server, src, out):
+              fields, methods = parse_tsrg(tsrg)
+              print('tsrg: %d fields, %d methods' % (len(fields), len(methods)))
+              table = {}
+              conflicts = 0
+              for mp in (client, server):
+                  cmap, raw = parse_mojmap(mp)
+                  for cls, kind, name, ret, args, obf in raw:
+                      ocls = cmap[cls].replace('.', '/')
+                      if kind == 'f':
+                          srg = fields.get((ocls, obf))
+                      else:
+                          d = '(' + ''.join(to_desc(a, cmap) for a in args) + ')' + to_desc(ret, cmap)
+                          srg = methods.get((ocls, obf, d))
+                      if srg and re.fullmatch(r'[mf]_\d+_', srg):
+                          if srg in table and table[srg] != name:
+                              conflicts += 1
+                          table.setdefault(srg, name)
+              print('resolved %d srg ids (%d conflicts)' % (len(table), conflicts))
+              json.dump(table, open(out, 'w'), indent=0, sort_keys=True)
+
+              pat = re.compile(r'\b([mf])_(\d+)_\b')
+              unresolved = collections.Counter()
+              replaced = 0
+
+              def sub(m):
+                  nonlocal replaced
+                  k = m.group(0)
+                  if k in table:
+                      replaced += 1
+                      return table[k]
+                  unresolved[k] += 1
+                  return k
+
+              for root, _, files in os.walk(src):
+                  for fn in files:
+                      if not fn.endswith('.java'):
+                          continue
+                      p = os.path.join(root, fn)
+                      t = open(p, encoding='utf-8').read()
+                      n = pat.sub(sub, t)
+                      if n != t:
+                          open(p, 'w', encoding='utf-8').write(n)
+              print('replaced %d references; %d unresolved ids' % (replaced, len(unresolved)))
+              for k, v in unresolved.most_common(40):
+                  print('  unresolved', k, v)
+
+
+          if __name__ == '__main__':
+              main(*sys.argv[1:6])
+          PYEOF
+          python3 remap.py mcp/config/joined.tsrg client.txt server.txt src srg2moj.json | tee remap.log
+
+      - name: Publish result to branch mojmap-source
+        run: |
+          set -e
+          mkdir -p out/src out/meta
+          cp -r work/src/. out/src/
+          cp work/remap.log work/srg2moj.json out/meta/
+          cp work/classes/*.json out/meta/ 2>/dev/null || true
+          cp work/classes/*.accesswidener out/meta/ 2>/dev/null || true
+          cp work/classes/META-INF/mods.toml out/meta/ 2>/dev/null || true
+          cd out
+          git init -q
+          git checkout -q -b mojmap-source
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Readable (Mojang-named) source extracted from the 1.20.1 jar"
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git push -f origin mojmap-source
