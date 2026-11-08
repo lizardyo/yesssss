@@ -1,0 +1,42 @@
+{
+  "mappings": {
+    "com/conquestrefabricated/mixin/AbstractClientPlayerEntityMixin": {
+      "getFovMultiplier": "Lnet/minecraft/client/player/AbstractClientPlayer;m_108565_()F"
+    },
+    "com/conquestrefabricated/mixin/LayerBlockPathNodeMixin": {
+      "getNodeType(Lnet/minecraft/world/BlockView;IIILnet/minecraft/entity/mob/MobEntity;)Lnet/minecraft/entity/ai/pathing/PathNodeType;": "Lnet/minecraft/world/level/pathfinder/WalkNodeEvaluator;m_7209_(Lnet/minecraft/world/level/BlockGetter;IIILnet/minecraft/world/entity/Mob;)Lnet/minecraft/world/level/pathfinder/BlockPathTypes;"
+    },
+    "com/conquestrefabricated/mixin/BlockSettingsOffsetMixin": {
+      "offset": "Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;m_222979_(Lnet/minecraft/world/level/block/state/BlockBehaviour$OffsetType;)Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;"
+    },
+    "com/conquestrefabricated/mixin/AbstractBlockStateMixin": {
+      "shouldBlockVision": "Lnet/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase;m_60831_(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Z",
+      "getCollisionShape(Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/ShapeContext;)Lnet/minecraft/util/shape/VoxelShape;": "Lnet/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase;m_60742_(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;",
+      "getCollisionShape(Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/util/shape/VoxelShape;": "Lnet/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase;m_60812_(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/shapes/VoxelShape;"
+    },
+    "com/conquestrefabricated/mixin/TranslatedModelLoaderMixin": {
+      "putModel": "Lnet/minecraft/client/resources/model/ModelBakery;m_119352_(Lnet/minecraft/resources/ResourceLocation;Lnet/minecraft/client/resources/model/UnbakedModel;)V"
+    }
+  },
+  "data": {
+    "named:intermediary": {
+      "com/conquestrefabricated/mixin/AbstractClientPlayerEntityMixin": {
+        "getFovMultiplier": "Lnet/minecraft/client/player/AbstractClientPlayer;m_108565_()F"
+      },
+      "com/conquestrefabricated/mixin/LayerBlockPathNodeMixin": {
+        "getNodeType(Lnet/minecraft/world/BlockView;IIILnet/minecraft/entity/mob/MobEntity;)Lnet/minecraft/entity/ai/pathing/PathNodeType;": "Lnet/minecraft/world/level/pathfinder/WalkNodeEvaluator;m_7209_(Lnet/minecraft/world/level/BlockGetter;IIILnet/minecraft/world/entity/Mob;)Lnet/minecraft/world/level/pathfinder/BlockPathTypes;"
+      },
+      "com/conquestrefabricated/mixin/BlockSettingsOffsetMixin": {
+        "offset": "Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;m_222979_(Lnet/minecraft/world/level/block/state/BlockBehaviour$OffsetType;)Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;"
+      },
+      "com/conquestrefabricated/mixin/AbstractBlockStateMixin": {
+        "shouldBlockVision": "Lnet/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase;m_60831_(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Z",
+        "getCollisionShape(Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/ShapeContext;)Lnet/minecraft/util/shape/VoxelShape;": "Lnet/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase;m_60742_(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;",
+        "getCollisionShape(Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;)Lnet/minecraft/util/shape/VoxelShape;": "Lnet/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase;m_60812_(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/shapes/VoxelShape;"
+      },
+      "com/conquestrefabricated/mixin/TranslatedModelLoaderMixin": {
+        "putModel": "Lnet/minecraft/client/resources/model/ModelBakery;m_119352_(Lnet/minecraft/resources/ResourceLocation;Lnet/minecraft/client/resources/model/UnbakedModel;)V"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+tsrg: 31003 fields, 48575 methods
+tsrg sample: 'tsrg2 obf srg id\n'
+tsrg sample: 'a net/minecraft/src/C_252363_ 252363\n'
+tsrg sample: '\ta f_252495_ 252495\n'
+tsrg sample: '\tb f_252529_ 252529\n'
+tsrg sample: '\tc f_252392_ 252392\n'
+tsrg sample: '\td f_252436_ 252436\n'
+tsrg sample: '\te f_252393_ 252393\n'
+tsrg sample: '\tf f_252403_ 252403\n'
+resolved 64225 srg ids (0 conflicts)
+replaced 14635 references; 0 unresolved ids
