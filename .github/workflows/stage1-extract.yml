@@ -121,15 +121,22 @@ jobs:
                       continue
                   t = line.strip().split()
                   if len(t) >= 3 and t[1].startswith('('):
-                      methods[(cur, t[0], t[1])] = t[2]
+                      srg = next((x for x in t[2:] if re.fullmatch(r'm_\d+_', x)), None)
+                      if srg:
+                          methods[(cur, t[0], t[1])] = srg
                   elif len(t) >= 2:
-                      fields[(cur, t[0])] = t[-1]
+                      srg = next((x for x in t[1:] if re.fullmatch(r'f_\d+_', x)), None)
+                      if srg:
+                          fields[(cur, t[0])] = srg
               return fields, methods
 
 
           def main(tsrg, client, server, src, out):
               fields, methods = parse_tsrg(tsrg)
               print('tsrg: %d fields, %d methods' % (len(fields), len(methods)))
+              for i, line in enumerate(open(tsrg, encoding='utf-8')):
+                  if i < 8:
+                      print('tsrg sample:', repr(line))
               table = {}
               conflicts = 0
               for mp in (client, server):
@@ -186,6 +193,8 @@ jobs:
           mkdir -p out/src out/meta
           cp -r work/src/. out/src/
           cp work/remap.log work/srg2moj.json out/meta/
+          gzip -k -c work/client.txt > out/meta/client.txt.gz
+          gzip -k -c work/mcp/config/joined.tsrg > out/meta/joined.tsrg.gz
           cp work/classes/*.json out/meta/ 2>/dev/null || true
           cp work/classes/*.accesswidener out/meta/ 2>/dev/null || true
           cp work/classes/META-INF/mods.toml out/meta/ 2>/dev/null || true
